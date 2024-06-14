@@ -1,98 +1,129 @@
 import javax.swing.*;
-import javax.swing.border.TitledBorder;
+import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.util.List;
 
 public class OrderPanel extends JPanel {
-    private ClothingStore store;
-    private JComboBox<Product> productComboBox;
-    private JTextField quantityField;
+    private JTextPane orderTextPane;
+    private JButton btnPlaceOrder;
+    private JButton btnDone;
 
     public OrderPanel(ClothingStore store) {
-        this.store = store;
+        setLayout(new BorderLayout());
+        setBorder(new EmptyBorder(10, 10, 10, 10)); // Add padding
 
-        // Panel layout and border
-        setLayout(new GridBagLayout());
-        setBackground(Color.WHITE); // Background color for the panel
+        // Add header
+        JLabel headerLabel = new JLabel("Pemesanan");
+        headerLabel.setFont(new Font("Arial", Font.BOLD, 24));
+        headerLabel.setForeground(new Color(0, 128, 0)); // Dark Green
+        headerLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        add(headerLabel, BorderLayout.NORTH);
 
-        // Initialize product combo box
-        productComboBox = new JComboBox<>();
-        for (Product product : store.getProducts()) {
-            productComboBox.addItem(product);
-        }
+        // JTextPane for order details with HTML content
+        orderTextPane = new JTextPane();
+        orderTextPane.setContentType("text/html");
+        orderTextPane.setEditable(false);
+        orderTextPane.setText("<html><body style='font-family: Arial, sans-serif; margin: 20px;'><h2 style='text-align: center;'>Detail Pemesanan</h2></body></html>");
+        JScrollPane orderScrollPane = new JScrollPane(orderTextPane);
+        orderScrollPane.setPreferredSize(new Dimension(800, 400));
+        add(orderScrollPane, BorderLayout.CENTER);
 
-        // Initialize quantity field
-        quantityField = new JTextField(10);
-
-        // Add labeled fields
-        add(UIUtils.createLabeledField("Produk:", productComboBox), createConstraints(0, 0));
-        add(UIUtils.createLabeledField("Kuantitas:", quantityField), createConstraints(0, 1));
-
-        // Add order button
-        JButton btnOrder = new JButton("Pesan");
-        styleButton(btnOrder, new Color(0, 0, 139)); // Applying blue color to the button
-        btnOrder.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                placeOrder();
-            }
-        });
-
-        // Center the button in a panel with full width alignment
+        // Button panel
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        buttonPanel.add(btnOrder);
-        buttonPanel.setBackground(Color.WHITE); // Ensure panel matches the background
+        buttonPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
 
-        // Add the button panel with GridBagConstraints to span all columns
-        GridBagConstraints gbcButtonPanel = createConstraints(0, 2);
-        gbcButtonPanel.gridwidth = GridBagConstraints.REMAINDER; // Span all columns
-        gbcButtonPanel.fill = GridBagConstraints.HORIZONTAL; // Fill horizontally
-        add(buttonPanel, gbcButtonPanel);
+        btnPlaceOrder = new JButton("Pemesanan");
+        styleButton(btnPlaceOrder, new Color(0, 128, 0)); // Dark Green
+        btnPlaceOrder.addActionListener(e -> placeOrder(store));
+        buttonPanel.add(btnPlaceOrder);
 
-        // Add a border for visual separation
-        TitledBorder titledBorder = BorderFactory.createTitledBorder("Pesan Produk");
-        titledBorder.setTitleFont(new Font("Arial", Font.BOLD, 20)); // Increase font size
-        titledBorder.setTitleJustification(TitledBorder.CENTER); // Center the title
-        setBorder(titledBorder);
+        btnDone = new JButton("Selesai");
+        styleButton(btnDone, new Color(0, 0, 139)); // Dark Red
+        btnDone.addActionListener(e -> completeOrder(store));
+        btnDone.setEnabled(false); // Initially disabled
+        buttonPanel.add(btnDone);
+
+        add(buttonPanel, BorderLayout.SOUTH);
     }
 
-    // Helper method to create GridBagConstraints
-    private GridBagConstraints createConstraints(int x, int y) {
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridx = x;
-        gbc.gridy = y;
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.insets = new Insets(5, 5, 5, 5);
-        return gbc;
-    }
-
-    // Method to place an order
-    private void placeOrder() {
-        try {
-            Product selectedProduct = (Product) productComboBox.getSelectedItem();
-            int quantity = Integer.parseInt(quantityField.getText());
-            if (selectedProduct != null && quantity > 0) {
-                Order order = new Order(selectedProduct, quantity);
-                store.placeOrder(order);
-                // Show a success message
-                JOptionPane.showMessageDialog(this, "Order Berhasil!", "Success", JOptionPane.INFORMATION_MESSAGE);
-                // Clear the quantity field after placing order
-                quantityField.setText("");
-            } else {
-                JOptionPane.showMessageDialog(this, "Masukan Data Yang Valid.", "Input Error", JOptionPane.ERROR_MESSAGE);
-            }
-        } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this, "Masukan Data Yang Valid.", "Input Error", JOptionPane.ERROR_MESSAGE);
-        }
-    }
-
-    // Helper method to style a button
+    // Method to style buttons
     private void styleButton(JButton button, Color backgroundColor) {
         button.setBackground(backgroundColor);
         button.setForeground(Color.WHITE);
-        button.setFont(new Font("Arial", Font.BOLD, 12));
+        button.setFont(new Font("Arial", Font.BOLD, 14));
         button.setFocusPainted(false);
-        button.setBorder(BorderFactory.createLineBorder(new Color(30, 144, 255))); // DodgerBlue border
+        button.setBorder(BorderFactory.createLineBorder(Color.GRAY, 1));
+    }
+
+    // Method to place an order
+    private void placeOrder(ClothingStore store) {
+        Order order = new Order();
+        List<Product> products = store.getProducts();
+        if (products.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Tidak ada item yang bisa dipesan.");
+            return;
+        }
+
+        String[] options = products.stream().map(Product::toString).toArray(String[]::new);
+        boolean continueOrdering = true;
+
+        // Use HTML for order details
+        StringBuilder orderDetails = new StringBuilder();
+        orderDetails.append("<html><body style='font-family: Arial, sans-serif; margin: 20px;'>");
+        orderDetails.append("<h2 style='text-align: center;'>Detail Pemesanan</h2>");
+        orderDetails.append("<ul>");
+
+        while (continueOrdering) {
+            String selectedItem = (String) JOptionPane.showInputDialog(null, "Pilih item yang akan Dipesan:", "Order", JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
+            if (selectedItem == null) {
+                continueOrdering = false;
+            } else {
+                for (Product item : products) {
+                    if (item.toString().equals(selectedItem)) {
+                        order.addItem(item);
+                        orderDetails.append("<li>").append(item.toString()).append("</li>");
+                    }
+                }
+            }
+        }
+
+        orderDetails.append("</ul>");
+        orderDetails.append("<h3>Total: $").append(String.format("%.2f", order.getTotalPrice())).append("</h3>");
+        orderDetails.append("</body></html>");
+
+        orderTextPane.setText(orderDetails.toString());
+        orderTextPane.setCaretPosition(0); // Scroll to the top
+
+        // Enable the "Done" button after placing the order
+        btnDone.setEnabled(true);
+    }
+
+    // Method to complete the order
+    private void completeOrder(ClothingStore store) {
+        String orderDetails = orderTextPane.getText();
+        if (!orderDetails.contains("<li>")) {
+            JOptionPane.showMessageDialog(this, "Tidak ada item yang dapat diedit.");
+            return;
+        }
+
+        // Parse the HTML and create the order
+        Order order = new Order();
+        List<Product> products = store.getProducts();
+
+        // Extract product names from the HTML list items
+        String[] selectedProducts = orderDetails.split("<li>|</li>");
+        for (String selectedItem : selectedProducts) {
+            if (selectedItem.trim().isEmpty()) continue;
+            for (Product item : products) {
+                if (item.toString().equals(selectedItem.trim())) {
+                    order.addItem(item);
+                }
+            }
+        }
+
+        store.placeOrder(order);
+        JOptionPane.showMessageDialog(this, "Pemesanan Berhasil!");
+        orderTextPane.setText("<html><body style='font-family: Arial, sans-serif; margin: 20px;'><h2 style='text-align: center;'>Detail Pemesanan</h2></body></html>");
+        btnDone.setEnabled(false); // Disable the "Done" button after completion
     }
 }
